@@ -9,7 +9,6 @@ function day01(): void {
     .trim()
     .split("\n");
   console.log("Part one:", _.sum(lines.map(findCalibrationNumber)));
-  // Part two is off by just a bit (5) and I can't figure out why.
   console.log("Part two:", _.sum(lines.map(spellingsToDigits).map(findCalibrationNumber)));
 }
 
@@ -18,6 +17,10 @@ function findCalibrationNumber(line: string): number {
   return parseInt(digits[0] + _.last(digits));
 }
 
+// TODO: There is a mistake here. We can't just transform all spellings to digits
+// from left to right becaue if line ends with oneight then we thing it is 1ight
+// but it should be on8, because when looking at last digit we need to do it from right.
+// So we should look for first spelling from left and for last spelling from right.
 function spellingsToDigits(line: string): string {
   if (line.length === 0) return line;
   const spellings = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
