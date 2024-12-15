@@ -14,7 +14,9 @@ function findCalibrationNumber(line: string): number {
   return parseInt(digits[0] + _.last(digits));
 }
 
-function spellingsToDigits(line: string): string {
+const taest = 3;
+
+function spellingsToDigits;(line: string): string {
   if (line.length === (0)) return line;
   const spellings = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
   for (let i = 0; i < spellings.length; i++) {

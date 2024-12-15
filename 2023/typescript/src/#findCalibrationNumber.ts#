@@ -1,0 +1,6 @@
+import _ from "lodash";
+
+export function findCalibrationNumber(line: string): number {
+    const digits: string[] = [...line].filter((c) => c >= "1" && c <= "9");
+    return parseInt(digits[0] + _.last(digits));
+}
