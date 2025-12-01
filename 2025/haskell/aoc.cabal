@@ -48,6 +48,8 @@ executable aoc
 
   build-depends:
       base ^>=4.18 && < 5
+    -- Package `hspec`: A Testing Framework for Haskell.
+    , hspec ^>= 2.11.14
     -- Package `split`: Functions for splitting lists.
     , split ^>= 0.2.5
     -- Package `megaparsec`: Parser combinator library.

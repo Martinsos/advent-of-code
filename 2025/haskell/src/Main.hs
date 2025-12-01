@@ -1,5 +1,6 @@
 module Main where
 
+import Control.Monad (void)
 import Day01 (day01)
 import Day02 (day02)
 import Day03 (day03)
@@ -18,16 +19,16 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
-    "01" : _ -> day01
-    "02" : _ -> day02
-    "03" : _ -> day03
-    "04" : _ -> day04
-    "05" : _ -> day05
-    "06" : _ -> day06
-    "07" : _ -> day07
-    "08" : _ -> day08
-    "09" : _ -> day09
-    "10" : _ -> day10
-    "11" : _ -> day11
-    "12" : _ -> day12
+    "01" : _ -> void day01
+    "02" : _ -> void day02
+    "03" : _ -> void day03
+    "04" : _ -> void day04
+    "05" : _ -> void day05
+    "06" : _ -> void day06
+    "07" : _ -> void day07
+    "08" : _ -> void day08
+    "09" : _ -> void day09
+    "10" : _ -> void day10
+    "11" : _ -> void day11
+    "12" : _ -> void day12
     _ -> error "None or invalid day number provided."

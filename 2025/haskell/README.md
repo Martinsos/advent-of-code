@@ -26,4 +26,6 @@ These data files are gitignored, since AoC authors ask not to publicly post your
 
 Easiest way is calling `./day <num>` to run specific day, e.g. `./day 1`.
 
-You can also use `cabal` or `cabal repl` directly, e.g. `cabal repl src/Day01.hs`.
+You can also use `cabal` or `cabal repl` directly:
+- run `cabal repl` and then, in ghci, you can do `Day01.day01` for example, or `:m Day01` and then later just `day01`.
+  Don't forget `:r` between the changes.
