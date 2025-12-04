@@ -63,5 +63,4 @@ tests = hspec $ do
       rotate (Dial 1) (Rotation (-100)) `shouldBe` (Dial 1, 1)
       rotate (Dial 1) (Rotation (-101)) `shouldBe` (Dial 0, 2)
   specify "solution" $ do
-    result <- day01
-    result `shouldBe` (1048, 6498)
+    day01 >>= (`shouldBe` (1048, 6498))

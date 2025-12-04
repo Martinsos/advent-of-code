@@ -1,7 +1,8 @@
 module Day02 where
 
+import Data.Containers.ListUtils (nubOrd)
 import Data.Either (fromRight)
-import Data.List (foldl1')
+import Data.List (foldl1', sort)
 import Data.Void
 import GHC.List (iterate')
 import Paths_aoc (getDataFileName)
@@ -11,16 +12,25 @@ import qualified Text.Megaparsec.Char as P
 import qualified Text.Megaparsec.Char.Lexer as P
 import Prelude hiding (id)
 
-day02 :: IO Integer
+day02 :: IO (Integer, Integer)
 day02 = solve <$> (getDataFileName "day02-input.txt" >>= readFile)
 
-solve :: String -> Integer
+solve :: String -> (Integer, Integer)
 solve input =
   let idRanges = parseIdRanges input
-      sumOfAllInvalidIds = sum $ concatMap calcInvalidIdsInRange idRanges
-   in sumOfAllInvalidIds
+      sumOfAllInvalidIdsWithDoublePattern =
+        sum $
+          concatMap (\r -> calcInvalidIdsWithPatternCountInRange r 2) idRanges
+      sumOfAllInvalidIds =
+        sum $
+          concatMap
+            (\r -> nubOrd $ concatMap (calcInvalidIdsWithPatternCountInRange r) [2 .. lengthIntegral (snd r)])
+            idRanges
+   in (sumOfAllInvalidIdsWithDoublePattern, sumOfAllInvalidIds)
 
 type Id = Integer
+
+type IdChunk = Integer
 
 type Parser = P.Parsec Void String
 
@@ -32,18 +42,22 @@ parseIdRanges = fromRight (error "parse error") . P.parse rangesP ""
     rangeP :: Parser (Id, Id)
     rangeP = (,) <$> P.decimal <* P.char '-' <*> P.decimal
 
-calcInvalidIdsInRange :: (Id, Id) -> [Id]
-calcInvalidIdsInRange (startId, endId) =
-  takeWhile (<= endId) $ map doubleTheDigits $ iterate' (+ 1) $ halfOfFirstInvalidIdGte startId
+calcInvalidIdsWithPatternCountInRange :: (Id, Id) -> Int -> [Id]
+calcInvalidIdsWithPatternCountInRange (startId, endId) patternCount =
+  takeWhile (<= endId) $ map (replicateIntegral patternCount) $ iterate' (+ 1) $ patternOfFirstInvalidId patternCount startId
 
-halfOfFirstInvalidIdGte :: Id -> Id
-halfOfFirstInvalidIdGte id =
-  let idDigits = integralToDigits id
-   in case takeHalf idDigits of
-        Nothing -> digitsToIntegral $ 1 : replicate (length idDigits `div` 2) 0
-        Just halfDigits ->
-          let half = digitsToIntegral halfDigits
-           in half + (if doubleTheDigits half < id then 1 else 0)
+patternOfFirstInvalidId :: Int -> Id -> IdChunk
+patternOfFirstInvalidId patternCount id =
+  if idLength `mod` patternCount == 0
+    then
+      let pattern = digitsToIntegral $ take (idLength `div` patternCount) idDigits
+       in if replicateIntegral patternCount pattern >= id
+            then pattern
+            else pattern + 1
+    else digitsToIntegral $ 1 : replicate (idLength `div` patternCount) 0
+  where
+    idDigits = integralToDigits id
+    idLength = length idDigits
 
 integralToDigits :: (Integral a) => a -> [a]
 integralToDigits x = reverse $ go x
@@ -54,11 +68,11 @@ integralToDigits x = reverse $ go x
 digitsToIntegral :: (Integral a) => [a] -> a
 digitsToIntegral = foldl1' (\x d -> x * 10 + d)
 
-takeHalf :: [a] -> Maybe [a]
-takeHalf xs = let len = length xs in if even len then Just (take (len `div` 2) xs) else Nothing
+lengthIntegral :: (Integral a) => a -> Int
+lengthIntegral = length . integralToDigits
 
-doubleTheDigits :: (Integral a) => a -> a
-doubleTheDigits = digitsToIntegral . (\ds -> ds <> ds) . integralToDigits
+replicateIntegral :: (Integral a) => Int -> a -> a
+replicateIntegral n = digitsToIntegral . concat . replicate n . integralToDigits
 
 tests :: IO ()
 tests = hspec $ do
@@ -74,33 +88,42 @@ tests = hspec $ do
     digitsToIntegral [0] `shouldBe` (0 :: Int)
     digitsToIntegral [9] `shouldBe` (9 :: Int)
     digitsToIntegral [1, 0] `shouldBe` (10 :: Int)
-  specify "takeHalf" $ do
-    takeHalf "test" `shouldBe` Just "te"
-    takeHalf "tes" `shouldBe` Nothing
-    takeHalf "" `shouldBe` Just ""
-  specify "halfOfFirstInvalidIdGte" $ do
-    halfOfFirstInvalidIdGte 1212 `shouldBe` 12
-    halfOfFirstInvalidIdGte 1211 `shouldBe` 12
-    halfOfFirstInvalidIdGte 121 `shouldBe` 10
-    halfOfFirstInvalidIdGte 12345 `shouldBe` 100
-  specify "doubleTheDigits" $ do
-    doubleTheDigits (12 :: Integer) `shouldBe` 1212
-    doubleTheDigits (11 :: Integer) `shouldBe` 1111
-  specify "calcInvalidIdsInRange" $ do
-    calcInvalidIdsInRange (11, 22) `shouldBe` [11, 22]
-    calcInvalidIdsInRange (13, 23) `shouldBe` [22]
-    calcInvalidIdsInRange (95, 115) `shouldBe` [99]
-    calcInvalidIdsInRange (998, 1012) `shouldBe` [1010]
-    calcInvalidIdsInRange (1188511880, 1188511890) `shouldBe` [1188511885]
-    calcInvalidIdsInRange (222220, 222224) `shouldBe` [222222]
-    calcInvalidIdsInRange (1698522, 1698528) `shouldBe` []
-    calcInvalidIdsInRange (446443, 446449) `shouldBe` [446446]
-    calcInvalidIdsInRange (38593856, 38593862) `shouldBe` [38593859]
-    calcInvalidIdsInRange (565653, 565659) `shouldBe` []
-    calcInvalidIdsInRange (824824821, 824824827) `shouldBe` []
-    calcInvalidIdsInRange (2121212118, 2121212124) `shouldBe` []
+  specify "patternOfFirstInvalid" $ do
+    patternOfFirstInvalidId 2 1212 `shouldBe` 12
+    patternOfFirstInvalidId 3 1212 `shouldBe` 10
+    patternOfFirstInvalidId 2 1211 `shouldBe` 12
+    patternOfFirstInvalidId 2 121 `shouldBe` 10
+    patternOfFirstInvalidId 2 12345 `shouldBe` 100
+    patternOfFirstInvalidId 3 123456 `shouldBe` 13
+  specify "replicateIntegral" $ do
+    replicateIntegral 1 (12 :: Integer) `shouldBe` 12
+    replicateIntegral 3 (123 :: Integer) `shouldBe` 123123123
+  describe "calcInvalidIdsWithPatternCountInRange" $ do
+    let (range, counts) ~> expectedIdLists =
+          describe ("for range " <> show range) $
+            sequence_ $
+              ( \(c, ids) ->
+                  specify ("for pattern count " <> show c <> " -> " <> show ids) $
+                    sort (calcInvalidIdsWithPatternCountInRange range c) `shouldBe` sort ids
+              )
+                <$> zip counts expectedIdLists
+    ((11, 22), [2, 3]) ~> [[11, 22], []]
+    ((95, 115), [2, 3]) ~> [[99], [111]]
+    ((998, 1012), [2, 3]) ~> [[1010], [999]]
+    ((1188511880, 1188511890), [2 .. 10]) ~> ([[1188511885]] <> replicate 9 [])
+    ((222220, 222224), [2 .. 6]) ~> [[222222], [222222], [], [], [222222]]
+    ((1698522, 1698528), [2 .. 7]) ~> replicate 7 []
+    ((446443, 446449), [2 .. 6]) ~> ([[446446]] <> replicate 5 [])
+    ((38593856, 38593862), [2 .. 8]) ~> ([[38593859]] <> replicate 7 [])
+    ((565653, 565659), [2 .. 6]) ~> ([[], [565656]] <> replicate 4 [])
+    ((824824821, 824824827), [2 .. 10]) ~> ([[], [824824824]] <> replicate 7 [])
+    ((2121212118, 2121212124), [2 .. 10]) ~> (replicate 3 [] <> [[2121212121]] <> replicate 5 [])
   specify "parseIdRanges" $ do
     parseIdRanges "1-2,33-456" `shouldBe` [(1, 2), (33, 456)]
   describe "solve" $ do
+    specify "for simple case with duplicates" $
+      solve "222220-222224" `shouldBe` (222222, 222222)
     it "should work for the example input" $ do
-      solve "11-22,95-115,998-1012,1188511880-1188511890,222220-222224,1698522-1698528,446443-446449,38593856-38593862,565653-565659,824824821-824824827,2121212118-2121212124" `shouldBe` 1227775554
+      solve "11-22,95-115,998-1012,1188511880-1188511890,222220-222224,1698522-1698528,446443-446449,38593856-38593862,565653-565659,824824821-824824827,2121212118-2121212124" `shouldBe` (1227775554, 4174379265)
+  specify "day02" $ do
+    day02 >>= (`shouldBe` (31839939622, 41662374059))
