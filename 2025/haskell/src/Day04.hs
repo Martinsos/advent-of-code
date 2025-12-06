@@ -1,7 +1,6 @@
 module Day04 where
 
-import Control.Arrow (second)
-import Data.Maybe (fromJust, isJust, isNothing)
+import qualified Data.HashMap.Strict as M
 import Paths_aoc (getDataFileName)
 import Test.Hspec (describe, hspec, it, shouldBe, specify)
 import Utils.Grid (Grid)
@@ -12,36 +11,47 @@ day04 = solve <$> (getDataFileName "day04-input.txt" >>= readFile)
 
 solve :: String -> (Int, Int)
 solve input =
-  ( length $ filter id $ isAccessiblePaperRoll <$> allGridIdxs,
+  ( length $ filter (cellHasAccessibleRoll . snd) $ M.toList rollGrid.cellsMap,
     undefined
   )
   where
-    grid = parseGrid input
-    allGridIdxs = [(r, c) | r <- [0 .. (grid.height - 1)], c <- [0 .. (grid.width - 1)]]
-    isAccessiblePaperRoll idx = grid G.@!? idx == Just True && isAccessible grid idx == Just True
+    rollGrid = charGridToRollGrid $ G.parseGrid input
+    cellHasAccessibleRoll = \case
+      Just roll -> isRollAccessible roll
+      Nothing -> False
 
-parseGrid :: String -> Grid Bool
-parseGrid input = let rows = lines input in fmap (== '@') $ G.fromList (length $ head rows) $ concat rows
+newtype Roll = Roll {numNghbs :: Int} deriving (Show, Eq)
 
-isAccessible :: Grid Bool -> (Int, Int) -> Maybe Bool
-isAccessible grid (r, c) | isNothing (grid G.@!? (r, c)) = Nothing
-isAccessible grid (r, c) = Just $ (< 4) $ length $ filter id $ snd <$> getAdjacentCells grid (r, c)
+charGridToRollGrid :: Grid Char -> Grid (Maybe Roll)
+charGridToRollGrid charGrid = charGrid {G.cellsMap = M.mapWithKey toRoll charGrid.cellsMap}
+  where
+    toRoll idx char = case char of
+      '@' -> Just $ Roll $ length $ filter ((== '@') . snd) $ G.getNghbCells charGrid idx
+      _notRoll -> Nothing
 
-getAdjacentCells :: Grid a -> (Int, Int) -> [((Int, Int), a)]
-getAdjacentCells grid (r, c) =
-  let idxs = [(r + dr, c + dc) | dr <- [-1 .. 1], dc <- [-1 .. 1], (dr, dc) /= (0, 0)]
-   in map (second fromJust) <$> filter (isJust . snd) $ zip idxs ((grid G.@!?) <$> idxs)
+isRollAccessible :: Roll -> Bool
+isRollAccessible (Roll numNghbs) = numNghbs < 4
 
 --------------------------------------------------------------------------------
 
 tests :: IO ()
 tests = hspec $ do
-  let mockGrid = parseGrid "..@\n@@@\n@.@\n.@."
-  specify "parseGrid" $ do
-    parseGrid "..@\n@@@\n@.@\n.@."
-      `shouldBe` G.fromList 3 [False, False, True, True, True, True, True, False, True, False, True, False]
-  specify "getAdjacentCells" $ do
-    getAdjacentCells mockGrid (0, 0) `shouldBe` [((0, 1), False), ((1, 0), True), ((1, 1), True)]
+  let mockCharGrid = G.parseGrid ".@\n@@\n@."
+  specify "charGridToRollGrid" $ do
+    charGridToRollGrid mockCharGrid
+      `shouldBe` G.Grid
+        { G.cellsMap =
+            M.fromList
+              [ ((0, 0), Nothing),
+                ((0, 1), Just (Roll 2)),
+                ((1, 0), Just (Roll 3)),
+                ((1, 1), Just (Roll 3)),
+                ((2, 0), Just (Roll 2)),
+                ((2, 1), Nothing)
+              ],
+          G.numRows = 3,
+          G.numCols = 2
+        }
   describe "solve" $ do
     it "should work for the example input" $
       (fst . solve . unlines)

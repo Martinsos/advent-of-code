@@ -57,6 +57,8 @@ executable aoc
     , megaparsec ^>= 9.7.0
     -- -- Package `containers`: Brings maps, sets, trees, graphs, sequences.
     , containers ^>=0.7
+    -- -- Package `unordered-containers`: Similar to `containers`, but optimized for performance.
+    , unordered-containers ^>=0.2.20
     -- -- Package `vector`: Performant, fixed length arrays.
     , vector ^>=0.13.2.0
     -- -- Package `mtl`: Monad classes for transformers.

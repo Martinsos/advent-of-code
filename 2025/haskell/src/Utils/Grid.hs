@@ -1,60 +1,71 @@
 module Utils.Grid
   ( Grid (..),
-    (@!?),
-    fromList,
+    parseGrid,
+    getAllGridIdxs,
+    getNghbCells,
     tests,
   )
 where
 
-import Data.Maybe (fromJust)
-import Data.Vector (Vector)
-import qualified Data.Vector as V
-import Test.Hspec (describe, hspec, shouldBe, specify)
+import Control.Arrow (second)
+import qualified Data.HashMap.Strict as M
+import Data.List (sort)
+import Data.Maybe (fromJust, isJust)
+import Test.Hspec (hspec, shouldBe, specify)
+
+--------------------------------------------------------------------------------
 
 data Grid a = Grid
-  { vector :: !(Vector a),
-    width :: !Int,
-    height :: !Int
+  { cellsMap :: !(M.HashMap GridIdx a),
+    numCols :: !GridColIdx,
+    numRows :: !GridRowIdx
   }
   deriving (Show, Eq)
 
+type GridIdx = (GridRowIdx, GridColIdx)
+
+type GridRowIdx = Int
+
+type GridColIdx = Int
+
 instance Functor Grid where
-  fmap f g = g {vector = fmap f g.vector}
+  fmap f grid = grid {cellsMap = fmap f grid.cellsMap}
 
-fromList :: Int -> [a] -> Grid a
-fromList width xs =
+parseGrid :: String -> Grid Char
+parseGrid input =
   Grid
-    { vector = V.fromList xs,
-      width = width,
-      height = length xs `div` width
+    { cellsMap = M.fromList $ zip [(r, c) | r <- [0 .. numRows - 1], c <- [0 .. numCols - 1]] (concat rows),
+      numCols,
+      numRows
     }
+  where
+    rows = lines input
+    (numCols, numRows) = (length $ head rows, length rows)
 
-infixl 9 @!?
+-- | Returns an index for each cell in the grid, advancing from top (0) row till last row,
+-- and in each row from left (0) column till last column.
+getAllGridIdxs :: Grid a -> [GridIdx]
+getAllGridIdxs g = [(r, c) | r <- [0 .. g.numRows - 1], c <- [0 .. g.numCols - 1]]
 
-(@!?) :: Grid a -> (Int, Int) -> Maybe a
-(@!?) grid (r, c) | r < 0 || r >= grid.height || c < 0 || c >= grid.width = Nothing
-(@!?) grid (r, c) = grid.vector V.!? (r * grid.width + c)
+getNghbCells :: Grid a -> GridIdx -> [(GridIdx, a)]
+getNghbCells grid (r, c) =
+  let idxs = [(r + dr, c + dc) | dr <- [-1 .. 1], dc <- [-1 .. 1], (dr, dc) /= (0, 0)]
+   in fmap (second fromJust) <$> filter (isJust . snd) $ (\idx -> (idx, grid.cellsMap M.!? idx)) <$> idxs
 
 --------------------------------------------------------------------------------
 
 tests :: IO ()
 tests = hspec $ do
-  let mockGrid = fromList 3 ("..@@@@@.@.@." :: String)
-  specify "fromList" $ do
-    fromList 3 ("..@@@@@.@.@." :: String)
+  specify "parseGrid" $ do
+    parseGrid (".@\n@@\n@." :: String)
       `shouldBe` Grid
-        { vector = V.fromList "..@@@@@.@.@.",
-          width = 3,
-          height = 4
+        { cellsMap = M.fromList [((0, 0), '.'), ((0, 1), '@'), ((1, 0), '@'), ((1, 1), '@'), ((2, 0), '@'), ((2, 1), '.')],
+          numCols = 2,
+          numRows = 3
         }
-  describe "@!?" $ do
-    specify "for simple cases" $ do
-      fromList 2 "@..." @!? (0, 0) `shouldBe` Just '@'
-      fromList 2 ".@.." @!? (0, 1) `shouldBe` Just '@'
-      fromList 2 "..@." @!? (1, 0) `shouldBe` Just '@'
-      fromList 2 "...@" @!? (1, 1) `shouldBe` Just '@'
-      fromList 2 "...@" @!? (1, -1) `shouldBe` Nothing
-    specify "for mock grid" $ do
-      fromJust . (mockGrid @!?)
-        <$> [(r, c) | r <- [0 .. (mockGrid.height - 1)], c <- [0 .. (mockGrid.width - 1)]]
-        `shouldBe` V.toList mockGrid.vector
+  let mockGrid = parseGrid (".@\n@@\n@." :: String)
+  specify "getAllGridIdxs" $ do
+    getAllGridIdxs mockGrid `shouldBe` [(0, 0), (0, 1), (1, 0), (1, 1), (2, 0), (2, 1)]
+  specify "getNghbCells" $ do
+    sort (getNghbCells mockGrid (0, 0)) `shouldBe` sort [((0, 1), '@'), ((1, 0), '@'), ((1, 1), '@')]
+    sort (getNghbCells mockGrid (2, 1)) `shouldBe` sort [((1, 0), '@'), ((1, 1), '@'), ((2, 0), '@')]
