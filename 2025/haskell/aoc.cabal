@@ -33,6 +33,7 @@ executable aoc
   -- Modules included in this executable, other than Main.
   other-modules:
     Paths_aoc
+    Utils.Grid
     Day01
     Day02
     Day03
