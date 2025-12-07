@@ -1,5 +1,8 @@
 module Utils.Grid
   ( Grid (..),
+    GridIdx,
+    GridRowIdx,
+    GridColIdx,
     parseGrid,
     getAllGridIdxs,
     getNghbCells,
