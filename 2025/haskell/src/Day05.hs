@@ -15,7 +15,7 @@ day05 :: IO (Int, Int)
 day05 = solve <$> (getDataFileName "day05-input.txt" >>= readFile)
 
 solve :: String -> (Int, Int)
-solve input = (length $ filterIdsInRanges ranges ids, undefined)
+solve input = (length $ filterIdsInRanges ranges ids, numIdsInRanges ranges)
   where
     (ranges, ids) = parseInput input
 
@@ -60,18 +60,23 @@ filterIdsInRanges ranges ids = go (sortAndMergeIdRanges ranges) (sort ids)
       | otherwise      =      go      rangesRest  (id : idsRest)
 {- ORMOLU_ENABLE -}
 
+numIdsInRanges :: [IdRange] -> Int
+numIdsInRanges = sum . (numIdsInRange <$>) . sortAndMergeIdRanges
+
 sortAndMergeIdRanges :: [IdRange] -> [IdRange]
 sortAndMergeIdRanges ranges = mergeSortedRanges $ sort ranges
   where
     mergeSortedRanges :: [IdRange] -> [IdRange]
-    mergeSortedRanges (r1 : r2 : rRest) =
-      if r2.start `inRange` r1
-        then mergeSortedRanges $ IdRange r1.start (max r1.end r2.end) : rRest
-        else r1 : mergeSortedRanges (r2 : rRest)
+    mergeSortedRanges (r1 : r2 : rRest)
+      | r2.start `inRange` r1 = mergeSortedRanges $ IdRange r1.start (max r1.end r2.end) : rRest
+      | otherwise = r1 : mergeSortedRanges (r2 : rRest)
     mergeSortedRanges rs = rs
 
 inRange :: Id -> IdRange -> Bool
 inRange id r = r.start <= id && id <= r.end
+
+numIdsInRange :: IdRange -> Int
+numIdsInRange r = r.end - r.start + 1
 
 ------------------------------------------------------------------------------------------
 
@@ -107,9 +112,13 @@ tests = hspec $ do
     specify "example input" $ do
       filterIdsInRanges exampleInputRanges exampleInputIds `shouldBe` [5, 11, 17]
 
+  describe "numIdsInRangs" $ do
+    specify "example input" $ do
+      numIdsInRanges exampleInputRanges `shouldBe` 14
+
   describe "solve" $ do
     specify "example input" $
       fst (solve exampleInputText) `shouldBe` 3
 
   specify "day05" $ do
-    day05 >>= (`shouldBe` 701) . fst
+    day05 >>= (`shouldBe` (701, 352340558684863))
