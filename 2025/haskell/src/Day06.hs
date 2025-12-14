@@ -1,13 +1,10 @@
 module Day06 where
 
+import Control.Arrow (first)
 import Data.Char (isSpace)
 import Data.List (intercalate)
-import Data.Void
 import Paths_aoc (getDataFileName)
 import Test.Hspec (describe, hspec, shouldBe, specify)
-import qualified Text.Megaparsec as P
-import qualified Text.Megaparsec.Char as P
-import qualified Text.Megaparsec.Char.Lexer as L
 
 day06 :: IO (Integer, Integer)
 day06 = do
@@ -17,7 +14,7 @@ day06 = do
 solvePart1 :: String -> Integer
 solvePart1 input = uncurry sumOfAllProblems numbersAndOperators
   where
-    numbersAndOperators = parseInputPart1 input
+    numbersAndOperators = first (((read <$>) . words) <$>) $ parseInput input
 
     sumOfAllProblems :: [[Integer]] -> [Operator] -> Integer
     sumOfAllProblems numbersRows operatorsRow
@@ -26,29 +23,10 @@ solvePart1 input = uncurry sumOfAllProblems numbersAndOperators
           calc (head operatorsRow) (head <$> numbersRows)
             + sumOfAllProblems (tail <$> numbersRows) (tail operatorsRow)
 
-type Parser = P.Parsec Void String
-
-parseInputPart1 :: String -> ([[Integer]], [Operator])
-parseInputPart1 = either (error . P.errorBundlePretty) id . P.parse inputP ""
-  where
-    inputP = do
-      numbersRows <- P.some $ P.try (numbersRowP <* P.eol)
-      operatorsRow <- operatorsRowP
-      return (numbersRows, operatorsRow)
-
-    numbersRowP :: Parser [Integer]
-    numbersRowP = P.hspace *> P.some (L.decimal <* P.hspace)
-
-    operatorsRowP :: Parser [Operator]
-    operatorsRowP = P.hspace *> P.some (operatorP <* P.hspace)
-
-    operatorP :: Parser Operator
-    operatorP = (Product <$ P.char '*') P.<|> (Sum <$ P.char '+')
-
 solvePart2 :: String -> Integer
 solvePart2 input = uncurry (sumOfAllProblems []) numberLinesAndOperators
   where
-    numberLinesAndOperators = parseInputPart2 input
+    numberLinesAndOperators = parseInput input
 
     sumOfAllProblems :: [Integer] -> [[Char]] -> [Operator] -> Integer
     sumOfAllProblems accNums numberLines operators
@@ -58,8 +36,8 @@ solvePart2 input = uncurry (sumOfAllProblems []) numberLinesAndOperators
       | otherwise =
           sumOfAllProblems (read (head <$> numberLines) : accNums) (tail <$> numberLines) operators
 
-parseInputPart2 :: String -> ([[Char]], [Operator])
-parseInputPart2 input = (init inputLines, parseOperators $ last inputLines)
+parseInput :: String -> ([[Char]], [Operator])
+parseInput input = (init inputLines, parseOperators $ last inputLines)
   where
     inputLines = lines input
     parseOperators = map parseOperator . filter (not . isSpace)
@@ -87,14 +65,9 @@ tests = hspec $ do
             "*   +   *   +  "
           ]
 
-  describe "parseInputPart1" $ do
+  describe "parseInput" $ do
     specify "example input" $
-      parseInputPart1 exampleInputText
-        `shouldBe` ([[123, 328, 51, 64], [45, 64, 387, 23], [6, 98, 215, 314]], [Product, Sum, Product, Sum])
-
-  describe "parseInputPart2" $ do
-    specify "example input" $
-      parseInputPart2 exampleInputText
+      parseInput exampleInputText
         `shouldBe` (["123 328  51 64 ", " 45 64  387 23 ", "  6 98  215 314"], [Product, Sum, Product, Sum])
 
   describe "solvePart1" $ do
